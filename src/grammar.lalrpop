@@ -1,0 +1,60 @@
+use std::str::FromStr;
+use lalrpop_util::ParseError;
+use instant::ast::*;
+
+grammar;
+
+extern {
+    type Error = LiteralOutOfBoundsError<'input>;
+}
+
+Lit: i32
+    = <position:@L> <s:r"[0-9]+"> =>? i32::from_str(s)
+        .map_err(|_| ParseError::User {
+            error: LiteralOutOfBoundsError {
+                literal: s,
+                position,
+            }
+        });
+
+Var: &'input str
+    = <position:@L> <value:r"[a-zA-Z][a-zA-Z0-9\\_\\']*"> => value;
+
+Exp1: Exp<'input> = {
+    <lhs:Exp2> "+" <rhs:Exp1> => Exp::Bi { lhs: Box::new(lhs), op: Op::Add, rhs: Box::new(rhs) },
+    <exp:Exp2> => exp,
+};
+
+Exp2: Exp<'input> = {
+    <lhs:Exp2> "-" <rhs:Exp3> => Exp::Bi { lhs: Box::new(lhs), op: Op::Sub, rhs: Box::new(rhs) },
+    <exp: Exp3> => exp,
+}
+
+Exp3: Exp<'input> = {
+    <lhs:Exp3> "*" <rhs:Exp4> => Exp::Bi { lhs: Box::new(lhs), op: Op::Mul, rhs: Box::new(rhs) },
+    <lhs:Exp3> "/" <rhs:Exp4> => Exp::Bi { lhs: Box::new(lhs), op: Op::Div, rhs: Box::new(rhs) },
+    <exp:Exp4> => exp,
+};
+
+Exp4: Exp<'input> = {
+    <lit:Lit> => Exp::Lit(lit),
+    <position:@L> <name:Var> => Exp::Var { name, position },
+    "(" <exp:Exp1> ")" => exp,
+};
+
+Stmt: Stmt<'input> = {
+    <exp:Exp1> => Stmt::Exp(exp),
+    <var:Var> "=" <exp:Exp1> => Stmt::Ass { var, exp },
+};
+
+pub Prog = Semicolon<Stmt>;
+
+Semicolon<T>: Vec<T> = {
+    <mut v:(<T> ";")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+};

@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+
+if (($# != 1)); then
+    echo "Usage: $0 <input file name>"
+    exit 1
+fi
+
+directory=$(dirname $1)
+filename=$(basename $1)
+basename="${filename%.*}"
+
+./instant --llvm < "$1" > "$directory/$basename.ll"
+llvm-as -o "$directory/$basename.bc" "$directory/$basename.ll"
