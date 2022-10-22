@@ -7,4 +7,4 @@ compiler:
 	cp target/release/instant .
 
 clean:
-	rm -rf target instant
+	rm -rf target instant examples/*.j examples/*.class examples/*.ll examples/*.bc examples/*result*
